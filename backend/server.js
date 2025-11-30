@@ -10,22 +10,15 @@ require('dotenv').config();
 const { stringify } = require('csv-stringify'); 
 
 const app = express();
-const port = process.env.PORT || 3000;
-
+// ⚡️ CORRECCIÓN: USAR process.env.PORT ASIGNADO POR EL SERVIDOR (Render lo asigna)
+const RENDER_PORT = process.env.PORT || 3000; 
 // Es crucial usar una clave secreta fuerte en producción
 const JWT_SECRET = 'tu_secreto_super_secreto_y_largo_que_nadie_debe_saber';
 
-// ⚡️ CORRECCIÓN FINAL Y DEFINITIVA: USAR LAS VARIABLES EXPLÍCITAS DE POSTGRES + SSL
+// ⚡️ CONFIGURACIÓN DE CONEXIÓN A LA BD
 const pool = new Pool({
-    // Render proporciona PGUSER, PGPASSWORD, PGDATABASE, PGHOST, PGPORT
-    // Si estás en Render, estas variables existen.
-    user: process.env.PGUSER,
-    host: process.env.PGHOST,
-    database: process.env.PGDATABASE,
-    password: process.env.PGPASSWORD,
-    port: process.env.PGPORT,
-    
-    // Configuración SSL requerida para conectarse al PostgreSQL de Render
+    // Usa la variable de entorno DATABASE_URL (si existe, la usa Render)
+    connectionString: process.env.DATABASE_URL, 
     ssl: {
         rejectUnauthorized: false
     }
@@ -42,15 +35,11 @@ pool.query('SELECT NOW()', (err, res) => {
 app.use(cors());
 app.use(express.json());
 
-// ... (El resto del código del servidor es el mismo)
-// ... (Tus rutas y el código final)
 
 // --- MIDDLEWARE DE AUTENTICACIÓN ---
 const verificarToken = (req, res, next) => {
-    // 1. Primero busca el token en la cabecera Authorization (opción segura)
     const authHeader = req.headers['authorization'];
     let token = authHeader && authHeader.split(' ')[1]; 
-    // 2. Si no lo encuentra, busca el token en los parámetros de consulta (req.query.token)
     if (!token && req.query.token) {
         token = req.query.token;
     }
@@ -64,7 +53,6 @@ const verificarToken = (req, res, next) => {
         }
         req.usuario = usuario;
         
-        // Limpiamos el token de la URL para evitar pasarlo a las funciones siguientes
         if (req.query.token) delete req.query.token;
         next();
     });
