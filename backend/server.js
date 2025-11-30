@@ -56,6 +56,7 @@ const corsOptions = {
   }
 };
 
+
 // Middlewares
 app.use(cors(corsOptions)); // ⬅️ APLICAMOS LA CONFIGURACIÓN DE CORS
 app.use(express.json());
