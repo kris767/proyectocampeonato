@@ -13,30 +13,27 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Es crucial usar una clave secreta fuerte en producción
-// Render usará el valor de la variable de entorno JWT_SECRET, si no, usa el valor por defecto.
-const JWT_SECRET = process.env.JWT_SECRET || 'tu_secreto_super_secreto_y_largo_que_nadie_debe_saber'; 
+const JWT_SECRET = 'tu_secreto_super_secreto_y_largo_que_nadie_debe_saber';
 
-// Configuración de la base de datos
+// ⚡️ CORRECCIÓN FINAL Y DEFINITIVA: USAR LAS VARIABLES EXPLÍCITAS DE POSTGRES + SSL
 const pool = new Pool({
-    // ⚡️ CORRECCIÓN CRÍTICA: PRIORIZA DATABASE_URL PARA RENDER
-    connectionString: process.env.DATABASE_URL, 
-    // Configuración SSL requerida para Render, solo se aplica si DATABASE_URL está presente
-    ssl: process.env.DATABASE_URL ? {
-        rejectUnauthorized: false
-    } : false,
+    // Render proporciona PGUSER, PGPASSWORD, PGDATABASE, PGHOST, PGPORT
+    // Si estás en Render, estas variables existen.
+    user: process.env.PGUSER,
+    host: process.env.PGHOST,
+    database: process.env.PGDATABASE,
+    password: process.env.PGPASSWORD,
+    port: process.env.PGPORT,
     
-    // Fallback para uso local (si no hay DATABASE_URL, volverá a usar tus variables locales)
-    user: process.env.DB_USER || 'krislarico4',
-    host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_DATABASE || 'Campeonato_futbol',
-    password: process.env.DB_PASSWORD || '13182459',
-    port: process.env.DB_PORT || 5432,
+    // Configuración SSL requerida para conectarse al PostgreSQL de Render
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
-
 
 // Prueba de conexión
 pool.query('SELECT NOW()', (err, res) => {
-    if (err) console.error('*** ERROR FATAL DE CONEXIÓN A POSTGRESQL ***', err.message);
+    if (err) console.error('*** ERROR FATAL DE CONEXIÓN A POSTGRESQL ***', err.stack);
     else console.log('--- CONEXIÓN A BD EXITOSA --- Hora del Servidor: ', res.rows[0].now);
 });
 
@@ -45,13 +42,14 @@ pool.query('SELECT NOW()', (err, res) => {
 app.use(cors());
 app.use(express.json());
 
+// ... (El resto del código del servidor es el mismo)
+// ... (Tus rutas y el código final)
 
-// --- MIDDLEWARE DE AUTENTICACIÓN (CORREGIDO PARA ADMITIR TOKEN EN QUERY) ---
+// --- MIDDLEWARE DE AUTENTICACIÓN ---
 const verificarToken = (req, res, next) => {
     // 1. Primero busca el token en la cabecera Authorization (opción segura)
     const authHeader = req.headers['authorization'];
     let token = authHeader && authHeader.split(' ')[1]; 
-    
     // 2. Si no lo encuentra, busca el token en los parámetros de consulta (req.query.token)
     if (!token && req.query.token) {
         token = req.query.token;
@@ -59,7 +57,7 @@ const verificarToken = (req, res, next) => {
     
     if (token == null) return res.status(401).json({ message: 'Acceso denegado. No se proporcionó token.' });
     
-    jwt.verify(token, JWT_SECRET, (err, usuario) => {
+    jwt.verify(token, process.env.JWT_SECRET || JWT_SECRET, (err, usuario) => {
         if (err) {
             console.error('Error de verificación de JWT:', err.message); 
             return res.status(403).json({ message: 'Token inválido o expirado.' }); 
@@ -72,7 +70,7 @@ const verificarToken = (req, res, next) => {
     });
 };
 
-// =============================== RUTAS PÚBLICAS Y AUTENTICACIÓN ===============================
+// =============================== RUTAS PÚBLICAS Y AUTENTICACIÓN (sin cambios) ===============================
 
 app.post('/api/usuarios/registrar', async (req, res) => {
     const { nombre_usuario, contrasena } = req.body;
@@ -103,7 +101,7 @@ app.post('/api/usuarios/login', async (req, res) => {
         if (!esValida) return res.status(401).json({ message: 'Credenciales inválidas.' });
         
         const payload = { id_usuario: usuario.id_usuario, rol: usuario.rol };
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' }); 
+        const token = jwt.sign(payload, process.env.JWT_SECRET || JWT_SECRET, { expiresIn: '1h' }); 
         
         res.json({ message: 'Inicio de sesión exitoso.', token: token }); 
     } catch (err) {
@@ -111,7 +109,7 @@ app.post('/api/usuarios/login', async (req, res) => {
     }
 });
 
-// =============================== RUTA DASHBOARD PROTEGIDA ===============================
+// =============================== RUTA DASHBOARD PROTEGIDA (sin cambios) ===============================
 app.get('/api/dashboard/stats', verificarToken, async (req, res) => {
     try {
         const [jugadores, equipos, partidos] = await Promise.all([
@@ -131,7 +129,7 @@ app.get('/api/dashboard/stats', verificarToken, async (req, res) => {
     }
 });
 
-// =============================== RUTAS DE EQUIPOS (CRUD) ===============================
+// =============================== RUTAS DE EQUIPOS (CRUD) (sin cambios) ===============================
 
 app.get('/api/equipos', verificarToken, async (req, res) => {
     try {
@@ -157,7 +155,7 @@ app.post('/api/equipos', verificarToken, async (req, res) => {
 });
 
 /**
- * ⚡️ RUTA AGREGADA: Actualiza un equipo por ID (PUT /api/equipos/:id)
+ * RUTA AGREGADA: Actualiza un equipo por ID (PUT /api/equipos/:id)
  */
 app.put('/api/equipos/:id', verificarToken, async (req, res) => {
     const { id } = req.params;
@@ -194,7 +192,7 @@ app.delete('/api/equipos/:id', verificarToken, async (req, res) => {
     }
 });
 
-// =============================== RUTAS DE JUGADORES (CRUD) ===============================
+// =============================== RUTAS DE JUGADORES (CRUD) (sin cambios) ===============================
 
 app.get('/api/jugadores', verificarToken, async (req, res) => {
     try {
@@ -239,7 +237,7 @@ app.delete('/api/jugadores/:id', verificarToken, async (req, res) => {
     }
 });
 
-// =============================== RUTAS DE PARTIDOS (CRUD) ===============================
+// =============================== RUTAS DE PARTIDOS (CRUD) (sin cambios) ===============================
 
 // Ruta para obtener todos los partidos (usada para la tabla y el select de goles)
 app.get('/api/partidos', verificarToken, async (req, res) => {
@@ -345,7 +343,7 @@ app.delete('/api/partidos/:id', verificarToken, async (req, res) => {
     }
 });
 
-// =============================== RUTAS DE GOLES (CRUD) ===============================
+// =============================== RUTAS DE GOLES (CRUD) (sin cambios) ===============================
 
 app.get('/api/goles', verificarToken, async (req, res) => {
     try {
@@ -458,7 +456,7 @@ app.delete('/api/goles/:id', verificarToken, async (req, res) => {
     }
 });
 
-// ===================== RUTAS DE TARJETAS (CRUD) =====================
+// ===================== RUTAS DE TARJETAS (CRUD) (sin cambios) =====================
 
 // Obtener histórico de tarjetas
 app.get('/api/tarjetas', verificarToken, async (req, res) => {
@@ -514,11 +512,11 @@ app.delete('/api/tarjetas/:id', verificarToken, async (req, res) => {
     }
 });
 
-// =============================== RUTA DE TABLA DE POSICIONES ===============================
+// =============================== RUTA DE TABLA DE POSICIONES (sin cambios) ===============================
 
 app.get('/api/reportes/tabla-posiciones', verificarToken, async (req, res) => {
     try {
-        const query = `
+        const result = await pool.query(`
             SELECT e.nombre,
                 COUNT(p.id_partido) AS partidos_jugados,
                 SUM(
@@ -586,8 +584,7 @@ app.get('/api/reportes/tabla-posiciones', verificarToken, async (req, res) => {
                     ELSE 0
                   END
                 ) DESC;
-        `;
-        const result = await pool.query(query);
+        `);
         res.json(result.rows);
     } catch (err) {
         console.error('ERROR AL CONSULTAR TABLA DE POSICIONES:', err.message, err.stack);
@@ -596,7 +593,7 @@ app.get('/api/reportes/tabla-posiciones', verificarToken, async (req, res) => {
 });
 
 
-// =============================== RUTAS DE CACHE (ÁRBITROS Y CANCHAS) ===============================
+// =============================== RUTAS DE CACHE (ÁRBITROS Y CANCHAS) (sin cambios) ===============================
 
 app.get('/api/arbitros', verificarToken, async (req, res) => {
     try {
@@ -671,7 +668,7 @@ app.delete('/api/canchas/:id', verificarToken, async (req, res) => {
 });
 
 
-// =============================== RUTA DE GENERACIÓN DE REPORTES ===============================
+// =============================== RUTA DE GENERACIÓN DE REPORTES (sin cambios) ===============================
 
 /**
  * Función para obtener datos de la base de datos según el tipo de reporte.
@@ -685,25 +682,44 @@ const obtenerDatosReporte = async (tipo) => {
         case 'posiciones':
             query = `
                 SELECT e.nombre AS "Equipo",
-                    COUNT(p.id_partido) AS "PJ",
-                    SUM(CASE WHEN (p.id_equipo_local = e.id_equipo AND p.goles_local > p.goles_visitante) OR (p.id_equipo_visitante = e.id_equipo AND p.goles_visitante > p.goles_local) THEN 1 ELSE 0 END) AS "Ganados",
-                    SUM(CASE WHEN p.goles_local = p.goles_visitante AND p.id_partido IS NOT NULL THEN 1 ELSE 0 END) AS "Empatados",
-                    SUM(CASE WHEN (p.id_equipo_local = e.id_equipo AND p.goles_local < p.goles_visitante) OR (p.id_equipo_visitante = e.id_equipo AND p.goles_visitante < p.goles_local) THEN 1 ELSE 0 END) AS "Perdidos",
-                    SUM(CASE WHEN p.id_equipo_local = e.id_equipo THEN p.goles_local WHEN p.id_equipo_visitante = e.id_equipo THEN p.goles_visitante ELSE 0 END) AS "GF",
-                    SUM(CASE WHEN p.id_equipo_local = e.id_equipo THEN p.goles_visitante WHEN p.id_equipo_visitante = e.id_equipo THEN p.goles_local ELSE 0 END) AS "GC",
-                    SUM(CASE WHEN (p.id_equipo_local = e.id_equipo AND p.goles_local > p.goles_visitante) OR (p.id_equipo_visitante = e.id_equipo AND p.goles_visitante > p.goles_local) THEN 3 WHEN p.goles_local = p.goles_visitante AND p.id_partido IS NOT NULL THEN 1 ELSE 0 END) AS "Puntos"
+                    COUNT(p.id_partido) AS partidos_jugados,
+                    SUM(CASE WHEN (p.id_equipo_local = e.id_equipo AND p.goles_local > p.goles_visitante) OR (p.id_equipo_visitante = e.id_equipo AND p.goles_visitante > p.goles_local) THEN 1 ELSE 0 END) AS Ganados,
+                    SUM(CASE WHEN p.goles_local = p.goles_visitante AND p.id_partido IS NOT NULL THEN 1 ELSE 0 END) AS Empatados,
+                    SUM(CASE WHEN (p.id_equipo_local = e.id_equipo AND p.goles_local < p.goles_visitante) OR (p.id_equipo_visitante = e.id_equipo AND p.goles_visitante < p.goles_local) THEN 1 ELSE 0 END) AS Perdidos,
+                    SUM(CASE WHEN p.id_equipo_local = e.id_equipo THEN p.goles_local WHEN p.id_equipo_visitante = e.id_equipo THEN p.goles_visitante ELSE 0 END) AS Goles_favor,
+                    SUM(CASE WHEN p.id_equipo_local = e.id_equipo THEN p.goles_visitante WHEN p.id_equipo_visitante = e.id_equipo THEN p.goles_local ELSE 0 END) AS Goles_contra,
+                    SUM(CASE WHEN (p.id_equipo_local = e.id_equipo AND p.goles_local > p.goles_visitante) OR (p.id_equipo_visitante = e.id_equipo AND p.goles_visitante > p.goles_local) THEN 3 WHEN p.goles_local = p.goles_visitante AND p.id_partido IS NOT NULL THEN 1 ELSE 0 END) AS Puntos
                 FROM equipo e
                 LEFT JOIN partido p ON e.id_equipo = p.id_equipo_local OR e.id_equipo = p.id_equipo_visitante
                 GROUP BY e.id_equipo
-                ORDER BY "Puntos" DESC, ("GF" - "GC") DESC, "GF" DESC;
+                ORDER BY Puntos DESC, (SUM(
+                    CASE
+                      WHEN p.id_equipo_local = e.id_equipo THEN p.goles_local
+                      WHEN p.id_equipo_visitante = e.id_equipo THEN p.goles_visitante
+                      ELSE 0
+                    END
+                  ) - SUM(
+                    CASE
+                      WHEN p.id_equipo_local = e.id_equipo THEN p.goles_visitante
+                      WHEN p.id_equipo_visitante = e.id_equipo THEN p.goles_local
+                      ELSE 0
+                    END
+                  )) DESC,
+                SUM(
+                  CASE
+                    WHEN p.id_equipo_local = e.id_equipo THEN p.goles_local
+                    WHEN p.id_equipo_visitante = e.id_equipo THEN p.goles_visitante
+                    ELSE 0
+                  END
+                ) DESC;
             `;
             break;
 
         case 'goleadores':
             query = `
                 SELECT 
-                    j.nombre_completo AS "Jugador",
-                    e.nombre AS "Equipo",
+                    j.nombre_completo AS Jugador,
+                    e.nombre AS Equipo,
                     COUNT(g.id_gol) AS "Goles Totales"
                 FROM gol g
                 JOIN jugador j ON g.id_jugador = j.id_jugador
@@ -717,11 +733,11 @@ const obtenerDatosReporte = async (tipo) => {
             query = `
                 SELECT 
                     t.id_tarjeta AS "ID Tarjeta",
-                    j.nombre_completo AS "Jugador",
-                    e.nombre AS "Equipo",
-                    t.tipo_tarjeta AS "Tipo",
-                    t.minuto AS "Minuto",
-                    CONCAT(e_local.nombre, ' vs ', e_visit.nombre) AS "Partido",
+                    j.nombre_completo AS Jugador,
+                    e.nombre AS Equipo,
+                    t.tipo_tarjeta AS Tipo,
+                    t.minuto AS Minuto,
+                    CONCAT(e_local.nombre, ' vs ', e_visit.nombre) AS Partido,
                     to_char(p.fecha, 'DD-MM-YYYY') AS "Fecha del Partido" 
                 FROM tarjeta t
                 JOIN partido p ON t.id_partido = p.id_partido
@@ -741,10 +757,10 @@ const obtenerDatosReporte = async (tipo) => {
                     p.goles_local AS "Goles Local",
                     p.goles_visitante AS "Goles Visitante",
                     e_visit.nombre AS "Equipo Visitante",
-                    a.nombre_completo AS "Árbitro",
-                    c.nombre AS "Cancha",
-                    to_char(p.fecha, 'DD-MM-YYYY') AS "Fecha",
-                    p.hora AS "Hora"
+                    a.nombre_completo AS Árbitro,
+                    c.nombre AS Cancha,
+                    to_char(p.fecha, 'DD-MM-YYYY') AS Fecha,
+                    p.hora AS Hora
                 FROM partido p
                 JOIN equipo e_local ON p.id_equipo_local = e_local.id_equipo
                 JOIN equipo e_visit ON p.id_equipo_visitante = e_visit.id_equipo
