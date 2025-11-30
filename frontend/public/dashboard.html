@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Gestor de Campeonato</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 🎨 ESTILOS BASE */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #e5e7eb; /* Fondo ligeramente más oscuro */
+            min-height: 100vh; 
+            color: #374151; 
+        }
+
+        /* ➡️ BARRA LATERAL (#sidebar) - ESTILOS MÓVILES (Responsive) */
+        #sidebar { 
+            position: fixed; 
+            width: 280px; 
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 50;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            background-color: #1f2937; 
+            color: #d1d5db; 
+            overflow-y: auto; 
+            padding-bottom: 80px; 
+        }
+
+        /* Estado visible del Sidebar (activado por JS) */
+        #sidebar.open {
+            transform: translateX(0);
+        }
+        
+        /* ➡️ CONTENIDO PRINCIPAL (#main-content) */
+        #main-content { 
+            flex-grow: 1; 
+            padding: 2rem; 
+            width: 100%; 
+            overflow-y: visible; 
+            min-width: 0; /* Necesario para que el contenido colapse bien */
+        }
+        
+        /* ➡️ LAYOUT DE ESCRITORIO (Media Query - a partir de 768px) */
+        @media (min-width: 768px) {
+            body {
+                display: flex;
+            }
+            #sidebar { 
+                position: static; 
+                flex-shrink: 0;
+                transform: translateX(0);
+            }
+        }
+
+        /* ➡️ ESTILOS DE NAVEGACIÓN Y TABLA */
+        .nav-item { display: flex; align-items: center; padding: 1rem 1.5rem; cursor: pointer; transition: background-color 0.2s, color 0.2s; font-weight: 500; }
+        .nav-item:hover { background-color: #374151; color: #ffffff; }
+        .nav-item.active { 
+            background-color: #3b82f6; 
+            color: #ffffff; 
+            /* Sombra y efecto sutil de resaltado */
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4); 
+            border-left: 5px solid #fff;
+        }
+        .nav-icon { margin-right: 12px; width: 20px; height: 20px; }
+        
+        /* Estilos base para todas las tablas administrativas */
+        .admin-table th { 
+            text-align: left; 
+            padding: 0.75rem 1rem; 
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            color: #6b7280; 
+            background-color: #f9fafb; 
+            border-bottom: 2px solid #e5e7eb; 
+        }
+        .admin-table td { 
+            padding: 1rem; 
+            border-bottom: 1px solid #e5e7eb; 
+        }
+        .page-content.hidden { display: none; } 
+    </style>
+</head>
+<body>
+
+    <button id="menu-toggle" class="md:hidden fixed top-4 left-4 bg-blue-600 p-3 rounded-full text-white z-50 shadow-xl">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+    </button>
+    <div id="mobile-overlay" class="hidden fixed inset-0 bg-black opacity-50 z-40 md:hidden"></div>
+    
+
+    <div id="sidebar">
+        <div class="p-6 text-2xl font-bold text-white border-b border-gray-700">
+            ⚽ Gestor Admin
+        </div>
+        <nav class="py-4">
+            <div id="nav-dashboard" class="nav-item active" data-page="dashboard">
+                <span class="nav-icon">📊</span> Dashboard
+            </div>
+            <div id="nav-equipos" class="nav-item" data-page="equipos">
+                <span class="nav-icon">🏆</span> Equipos
+            </div>
+            <div id="nav-jugadores" class="nav-item" data-page="jugadores">
+                <span class="nav-icon">🧑‍🤝‍🧑</span> Jugadores
+            </div>
+            <div id="nav-partidos" class="nav-item" data-page="partidos">
+                <span class="nav-icon">📅</span> Partidos
+            </div>
+            <div id="nav-goles" class="nav-item" data-page="goles">
+                <span class="nav-icon">⚽</span> Goles
+            </div>
+            <div id="nav-tarjetas" class="nav-item" data-page="tarjetas">
+                <span class="nav-icon">🟨🟥</span> Tarjetas
+            </div>
+            <div id="nav-arbitros" class="nav-item" data-page="arbitros">
+                <span class="nav-icon">👤</span> Árbitros
+            </div>
+            <div id="nav-canchas" class="nav-item" data-page="canchas">
+                <span class="nav-icon">🏟️</span> Canchas
+            </div>
+            <div id="nav-reportes" class="nav-item" data-page="reportes">
+                <span class="nav-icon">📑</span> Reportes
+            </div>
+            
+        </nav>
+        <div class="p-6 absolute bottom-0 left-0 right-0"> 
+            <button id="btn-logout" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 shadow-md">
+                Cerrar Sesión
+            </button>
+        </div>
+    </div>
+
+    <main id="main-content">
+        <h1 id="page-title" class="text-3xl font-extrabold text-gray-900 mb-6">Dashboard</h1>
+
+        <div id="notification-container" class="fixed top-5 right-5 z-50"></div>
+        
+        <section id="page-dashboard" class="page-content block">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500 hover:shadow-xl transition duration-300">
+                    <p class="text-sm font-medium text-gray-500">Equipos Registrados</p>
+                    <p id="stat-equipos" class="text-4xl font-bold text-gray-900 mt-1">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500 hover:shadow-xl transition duration-300">
+                    <p class="text-sm font-medium text-gray-500">Jugadores Totales</p>
+                    <p id="stat-jugadores" class="text-4xl font-bold text-gray-900 mt-1">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500 hover:shadow-xl transition duration-300">
+                    <p class="text-sm font-medium text-gray-500">Partidos Jugados</p>
+                    <p id="stat-partidos" class="text-4xl font-bold text-gray-900 mt-1">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition duration-300">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Tabla de Máximos Goleadores (TOP 5)</h2>
+                <div id="top-goleadores-placeholder" class="text-gray-500">
+                    Cargando datos de goles...
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg mt-8 hover:shadow-xl transition duration-300">
+                <h3 class="text-2xl font-bold mb-4 text-gray-700">Tabla de Posiciones</h3>
+                <div class="overflow-x-auto">
+                    <table id="tabla-posiciones" class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            </thead>
+                        <tbody id="cuerpo-tabla-posiciones" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="9" class="text-center py-4">Cargando tabla de posiciones...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        
+        <section id="page-equipos" class="page-content hidden">
+            <h2 id="title-equipos" class="text-3xl font-extrabold text-gray-900 mb-6">Gestión de Equipos 🏆</h2>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border-l-4 border-blue-500 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-blue-700">✍️ Registrar Nuevo Equipo</h3>
+                <form id="formulario-equipo" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div class="col-span-1 md:col-span-2">
+                        <label for="nombre-equipo" class="block text-sm font-medium text-gray-700">Nombre del Equipo</label>
+                        <input type="text" id="nombre-equipo" name="nombre" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400" placeholder="Ej: Real Madrid C.F.">
+                    </div>
+                    <div class="col-span-1 md:col-span-1">
+                        <label for="ciudad-equipo" class="block text-sm font-medium text-gray-700">Ciudad</label>
+                        <input type="text" id="ciudad-equipo" name="ciudad" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400" placeholder="Ej: Madrid">
+                    </div>
+                    <div class="col-span-1 md:col-span-1">
+                        <button type="submit" id="btn-crear-equipo" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-150 shadow-md hover:shadow-lg">
+                            + Crear Equipo
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-gray-700">Listado de Equipos Registrados</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 admin-table">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="w-1/12">ID</th>
+                                <th scope="col" class="w-5/12">Nombre</th>
+                                <th scope="col" class="w-3/12">Ciudad</th>
+                                <th scope="col" class="w-3/12 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla-equipos" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="4" class="text-center text-gray-500 py-4">Cargando equipos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-jugadores" class="page-content hidden">
+            <h2 id="title-jugadores" class="text-3xl font-extrabold text-gray-900 mb-6">Gestión de Jugadores 🧑‍🤝‍🧑</h2>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border-l-4 border-green-500 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-green-700">✍️ Registrar Nuevo Jugador</h3>
+                <form id="formulario-jugador" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    <div class="md:col-span-2">
+                        <label for="nombre-completo-jugador" class="block text-sm font-medium text-gray-700">Nombre Completo</label>
+                        <input type="text" id="nombre-completo-jugador" name="nombre_completo" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-green-500 focus:border-green-500" placeholder="Ej: Lionel Messi">
+                    </div>
+
+                    <div>
+                        <label for="posicion-jugador" class="block text-sm font-medium text-gray-700">Posición</label>
+                        <select id="posicion-jugador" name="posicion" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-green-500 focus:border-green-500">
+                            <option value="">Selecciona Posición</option>
+                            <option value="Portero">Portero</option>
+                            <option value="Defensa">Defensa</option>
+                            <option value="Mediocampista">Mediocampista</option>
+                            <option value="Delantero">Delantero</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="fecha-nacimiento-jugador" class="block text-sm font-medium text-gray-700">F. Nacimiento</label>
+                        <input type="date" id="fecha-nacimiento-jugador" name="fecha_nacimiento" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-green-500 focus:border-green-500">
+                    </div>
+
+                    <div>
+                        <label for="select-equipo-jugador" class="block text-sm font-medium text-gray-700">Equipo Asignado</label>
+                        <select id="select-equipo-jugador" name="id_equipo" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-green-500 focus:border-green-500">
+                            <option value="">Cargando equipos...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="md:col-span-5 flex justify-end">
+                          <button type="submit" id="btn-registrar-jugador" class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-150 shadow-md hover:shadow-lg">
+                            ✅ Registrar Jugador
+                          </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-gray-700">Listado de Jugadores Registrados (Total: <span id="total-jugadores-lista">0</span>)</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 admin-table">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="w-1/12">ID</th>
+                                <th scope="col" class="w-3/12">Nombre</th>
+                                <th scope="col" class="w-3/12">Equipo</th>
+                                <th scope="col" class="w-2/12">Posición</th>
+                                <th scope="col" class="w-2/12">F. Nacimiento</th>
+                                <th scope="col" class="w-1/12 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla-jugadores" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="6" class="text-center text-gray-500 py-4">Cargando jugadores...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-partidos" class="page-content hidden">
+            <h2 id="title-partidos" class="text-3xl font-extrabold text-gray-900 mb-6">Gestión de Partidos 📅</h2>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border-l-4 border-yellow-500 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-yellow-700">🗓️ Programar Nuevo Partido</h3>
+                <form id="formulario-partido" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    <div>
+                        <label for="select-equipo-local" class="block text-sm font-medium text-gray-700">Equipo Local</label>
+                        <select id="select-equipo-local" name="id_equipo_local" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-yellow-500 focus:border-yellow-500">
+                            <option value="">Selecciona Local</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="select-equipo-visitante" class="block text-sm font-medium text-gray-700">Equipo Visitante</label>
+                        <select id="select-equipo-visitante" name="id_equipo_visitante" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-yellow-500 focus:border-yellow-500">
+                            <option value="">Selecciona Visitante</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="select-arbitro-partido" class="block text-sm font-medium text-gray-700">Árbitro</label>
+                        <select id="select-arbitro-partido" name="id_arbitro" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-yellow-500 focus:border-yellow-500">
+                            <option value="">Selecciona Árbitro</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="select-cancha-partido" class="block text-sm font-medium text-gray-700">Cancha</label>
+                        <select id="select-cancha-partido" name="id_cancha" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-yellow-500 focus:border-yellow-500">
+                            <option value="">Selecciona Cancha</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="fecha-hora-partido" class="block text-sm font-medium text-gray-700">Fecha y Hora</label>
+                        <input type="datetime-local" id="fecha-hora-partido" name="fecha_hora" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-yellow-500 focus:border-yellow-500">
+                    </div>
+                    
+                    <div class="md:col-span-5 flex justify-end mt-4">
+                          <button type="submit" id="btn-registrar-partido" class="w-full md:w-auto bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-150 shadow-md hover:shadow-lg">
+                            + Programar Partido
+                          </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-gray-700">Listado de Partidos Registrados (Total: <span id="total-partidos-lista">0</span>)</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 admin-table">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="w-1/12">ID</th>
+                                <th scope="col" class="w-3/12">Encuentro</th>
+                                <th scope="col" class="w-2/12">Resultado</th>
+                                <th scope="col" class="w-3/12">Fecha</th>
+                                <th scope="col" class="w-3/12 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla-partidos" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="5" class="text-center text-gray-500 py-4">Cargando partidos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-canchas" class="page-content hidden">
+            <h2 id="title-canchas" class="text-3xl font-extrabold text-gray-900 mb-6">Gestión de Canchas 🏟️</h2>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border-l-4 border-indigo-500 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-indigo-700">✍️ Registrar Nueva Cancha</h3>
+                <form id="formulario-cancha" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div class="col-span-1 md:col-span-2">
+                        <label for="nombre-cancha" class="block text-sm font-medium text-gray-700">Nombre de la Cancha</label>
+                        <input type="text" id="nombre-cancha" name="nombre" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ej: Estadio Nacional">
+                    </div>
+                    <div class="col-span-1 md:col-span-1">
+                        <label for="ubicacion-cancha" class="block text-sm font-medium text-gray-700">Ubicación/Ciudad</label>
+                        <input type="text" id="ubicacion-cancha" name="ubicacion" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ej: La Paz">
+                    </div>
+                    <div class="col-span-1 md:col-span-1">
+                        <button type="submit" id="btn-crear-cancha" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-150 shadow-md hover:shadow-lg">
+                            + Registrar Cancha
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-gray-700">Listado de Canchas Registradas</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 admin-table">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="w-1/12">ID</th>
+                                <th scope="col" class="w-5/12">Nombre</th>
+                                <th scope="col" class="w-3/12">Ubicación</th>
+                                <th scope="col" class="w-3/12 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla-canchas" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="4" class="text-center text-gray-500 py-4">Cargando canchas...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+
+        <section id="page-arbitros" class="page-content hidden">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-6">Gestión de Árbitros 👤</h2>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border-l-4 border-red-500 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-red-700">✍️ Registrar Nuevo Árbitro</h3>
+                <form id="formulario-arbitro" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div class="col-span-1 md:col-span-2">
+                        <label for="nombre-arbitro" class="block text-sm font-medium text-gray-700">Nombre Completo</label>
+                        <input type="text" id="nombre-arbitro" name="nombre_completo" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-red-500 focus:border-red-500" placeholder="Ej: Néstor Pitana">
+                    </div>
+                    <div class="col-span-1 md:col-span-1">
+                        <label for="funcion-arbitro" class="block text-sm font-medium text-gray-700">Función</label>
+                        <select id="funcion-arbitro" name="funcion" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-red-500 focus:border-red-500">
+                            <option value="">Selecciona Función</option>
+                            <option value="Principal">Principal</option>
+                            <option value="Asistente 1">Asistente 1</option>
+                            <option value="Asistente 2">Asistente 2</option>
+                            <option value="VAR">VAR</option>
+                        </select>
+                    </div>
+                    <div class="col-span-1 md:col-span-1">
+                        <button type="submit" id="btn-crear-arbitro" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-150 shadow-md hover:shadow-lg">
+                            + Registrar Árbitro
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-gray-700">Listado de Árbitros Registrados</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 admin-table">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="w-1/12">ID</th>
+                                <th scope="col" class="w-5/12">Nombre Completo</th>
+                                <th scope="col" class="w-3/12">Función</th>
+                                <th scope="col" class="w-3/12 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla-arbitros" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="4" class="text-center text-gray-500 py-4">Cargando árbitros...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+
+        <section id="page-goles" class="page-content hidden">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-6">Registro de Goles ⚽</h2>
+            
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border-l-4 border-teal-500 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-teal-700">⚽ Registrar Gol</h3>
+                <form id="formulario-gol" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    
+                    <div class="md:col-span-2">
+                        <label for="select-partido-gol" class="block text-sm font-medium text-gray-700">Partido</label>
+                        <select id="select-partido-gol" name="id_partido" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-teal-500 focus:border-teal-500">
+                            <option value="">Selecciona un Partido</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="select-goleador" class="block text-sm font-medium text-gray-700">Goleador</label>
+                        <select id="select-goleador" name="id_jugador" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-teal-500 focus:border-teal-500">
+                            <option value="">Selecciona Jugador</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="minuto-gol" class="block text-sm font-medium text-gray-700">Minuto</label>
+                        <input type="number" id="minuto-gol" name="minuto" required min="1" max="120" class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-teal-500 focus:border-teal-500" placeholder="Ej: 45">
+                    </div>
+
+                    <div>
+                        <label for="select-asistencia" class="block text-sm font-medium text-gray-700">Asistencia (Opcional)</label>
+                        <select id="select-asistencia" name="id_asistencia" class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-teal-500 focus:border-teal-500">
+                            <option value="">Ninguno</option>
+                        </select>
+                    </div>
+                    
+                    <div class="md:col-span-5 flex justify-end mt-4">
+                          <button type="submit" id="btn-registrar-gol" class="w-full md:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-150 shadow-md hover:shadow-lg">
+                            + Registrar Gol
+                          </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-gray-700">Histórico de Goles</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 admin-table">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="w-1/12">ID</th>
+                                <th scope="col" class="w-3/12">Partido</th>
+                                <th scope="col" class="w-3/12">Goleador</th>
+                                <th scope="col" class="w-1/12">Minuto</th>
+                                <th scope="col" class="w-3/12">Asistencia</th>
+                                <th scope="col" class="w-1/12 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla-goles" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="6" class="text-center text-gray-500 py-4">Cargando goles...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-tarjetas" class="page-content hidden">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-6">Registro de Tarjetas 🟨🟥</h2>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border-l-4 border-red-500 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-red-700">✍️ Registrar Tarjeta</h3>
+                <form id="formulario-tarjeta" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    
+                    <div class="md:col-span-2">
+                        <label for="select-partido-tarjeta" class="block text-sm font-medium text-gray-700">Partido</label>
+                        <select id="select-partido-tarjeta" name="id_partido" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-red-500 focus:border-red-500">
+                            <option value="">Selecciona un Partido</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="select-jugador-tarjeta" class="block text-sm font-medium text-gray-700">Jugador Sancionado</label>
+                        <select id="select-jugador-tarjeta" name="id_jugador" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-red-500 focus:border-red-500">
+                            <option value="">Selecciona Jugador</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="select-tipo-tarjeta" class="block text-sm font-medium text-gray-700">Tipo</label>
+                        <select id="select-tipo-tarjeta" name="tipo_tarjeta" required class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-red-500 focus:border-red-500">
+                            <option value="">Selecciona Tipo</option>
+                            <option value="Amarilla">🟨 Amarilla</option>
+                            <option value="Roja">🟥 Roja</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="minuto-tarjeta" class="block text-sm font-medium text-gray-700">Minuto</label>
+                        <input type="number" id="minuto-tarjeta" name="minuto" required min="1" max="120" class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-red-500 focus:border-red-500" placeholder="Ej: 85">
+                    </div>
+                    
+                    <div class="md:col-span-5 flex justify-end mt-4">
+                          <button type="submit" id="btn-registrar-tarjeta" class="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-150 shadow-md hover:shadow-lg">
+                            + Registrar Tarjeta
+                          </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-gray-700">Histórico de Tarjetas</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 admin-table">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="w-1/12">ID</th>
+                                <th scope="col" class="w-3/12">Partido</th>
+                                <th scope="col" class="w-3/12">Jugador</th>
+                                <th scope="col" class="w-2/12">Equipo</th>
+                                <th scope="col" class="w-1/12">Tipo</th>
+                                <th scope="col" class="w-1/12">Minuto</th>
+                                <th scope="col" class="w-2/12 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla-tarjetas" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="7" class="text-center text-gray-500 py-4">Cargando histórico de tarjetas...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        
+        <section id="page-reportes" class="page-content hidden">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-6">Reportes Adicionales 📑</h2>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border-l-4 border-gray-500 hover:shadow-xl transition duration-300">
+                <h3 class="text-xl font-semibold mb-4 text-gray-700">⚙️ Opciones de Reporte</h3>
+                <form id="formulario-reporte" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label for="tipo-reporte" class="block text-sm font-medium text-gray-700">Seleccionar Reporte</label>
+                        <select id="tipo-reporte" class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-gray-500 focus:border-gray-500">
+                            <option value="goleadores">Máximos Goleadores</option>
+                            <option value="tarjetas">Jugadores con Más Tarjetas</option>
+                            <option value="historico">Histórico de Partidos</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="filtro-equipo" class="block text-sm font-medium text-gray-700">Filtrar por Equipo (Opcional)</label>
+                        <select id="filtro-equipo" class="mt-1 block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-gray-500 focus:border-gray-500">
+                            <option value="">Todos los Equipos</option>
+                            </select>
+                    </div>
+                    
+                    <div class="col-span-1 md:col-span-2 flex gap-4">
+                        <button type="button" id="btn-generar-reporte-csv" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-150 shadow-md hover:shadow-lg">
+                            🔍 Generar CSV
+                        </button>
+                        <button type="button" id="btn-exportar-pdf-simulado" class="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-2.5 px-4 rounded-lg transition duration-150 shadow-md hover:shadow-lg">
+                            📥 Exportar PDF (Sim.)
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition duration-300">
+                <h3 id="reporte-titulo" class="text-xl font-semibold mb-4 text-gray-700">Resultados del Reporte: Máximos Goleadores</h3>
+                
+                <div id="contenedor-reporte-datos" class="overflow-x-auto">
+                    <p class="text-center text-gray-500 py-4">Selecciona las opciones y haz clic en "Generar CSV" para ver o descargar los datos.</p>
+                </div>
+            </div>
+        </section>
+        
+    </main>
+
+    <div id="modal-editar-equipo" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+        <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            
+            <div class="flex justify-between items-start pb-3 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-900">
+                    Editar Equipo
+                </h3>
+                <button type="button" onclick="cerrarModalEditarEquipo()" class="text-gray-400 hover:text-gray-900">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <form id="formulario-editar-equipo" class="py-4">
+                
+                <input type="hidden" id="edit-id-equipo" name="id_equipo">
+
+                <div class="mb-4">
+                    <label for="edit-nombre-equipo" class="block text-sm font-medium text-gray-700">Nombre del Equipo</label>
+                    <input type="text" id="edit-nombre-equipo" name="nombre" required
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-yellow-500 focus:border-yellow-500">
+                </div>
+
+                <div class="mb-6">
+                    <label for="edit-ciudad-equipo" class="block text-sm font-medium text-gray-700">Ciudad</label>
+                    <input type="text" id="edit-ciudad-equipo" name="ciudad" required
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-yellow-500 focus:border-yellow-500">
+                </div>
+
+                <div class="flex justify-end pt-4 border-t border-gray-200">
+                    <button type="button" onclick="cerrarModalEditarEquipo()" class="mr-3 inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="../js/main.js"></script> 
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const menuToggle = document.getElementById('menu-toggle');
+            const mobileOverlay = document.getElementById('mobile-overlay');
+
+            function toggleMobileMenu() {
+                sidebar.classList.toggle('open');
+                mobileOverlay.classList.toggle('hidden');
+            }
+
+            if (menuToggle) menuToggle.addEventListener('click', toggleMobileMenu);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', toggleMobileMenu);
+
+            // Cierra el menú cuando se hace clic en un ítem de navegación (en móvil)
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    if (window.innerWidth < 768) {
+                        toggleMobileMenu();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

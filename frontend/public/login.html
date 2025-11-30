@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Gestor de Campeonato</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos CSS */
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .form-card { background-color: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); width: 100%; max-width: 400px; }
+        input[type="text"], input[type="password"] { border: 1px solid #d1d5db; padding: 0.75rem 1rem; border-radius: 0.5rem; width: 100%; transition: border-color 0.15s ease-in-out; }
+        input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25); }
+        .btn-primary { background-color: #2563eb; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; width: 100%; transition: background-color 0.15s ease-in-out; }
+        .btn-primary:hover { background-color: #1d4ed8; }
+        .message-box { padding: 0.75rem; margin-bottom: 1rem; border-radius: 0.5rem; font-weight: 500; display: none; }
+        .message-error { background-color: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; }
+    </style>
+</head>
+<body>
+
+    <div class="form-card">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">Gestor del Campeonato</h1>
+        <p class="text-sm text-center text-gray-500 mb-6">Por favor, inicia sesión para continuar</p>
+
+        <div id="message-area" class="message-box message-error" role="alert"></div>
+
+        <form id="login-form" class="space-y-5">
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Nombre de Usuario</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <button type="submit" class="btn-primary">INGRESAR</button>
+        </form>
+
+        <p class="text-center text-sm text-gray-600 mt-6">
+            ¿No tienes una cuenta? <a href="registro.html" class="text-blue-600 hover:underline">Regístrate aquí</a>
+        </p>
+    </div>
+
+     <script src="../js/main.js"></script> 
+
+ 
+</body>
+</html>
