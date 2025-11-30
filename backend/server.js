@@ -38,10 +38,28 @@ pool.query('SELECT NOW()', (err, res) => {
     else console.log('--- CONEXIÓN A BD EXITOSA --- Hora del Servidor: ', res.rows[0].now);
 });
 
+// ⚡️ CORRECCIÓN DE CORS: Permitir peticiones desde tu dominio de Netlify
+const allowedOrigins = [
+    'https://proyectocampeonato.netlify.app', // Tu dominio de Netlify
+    'http://localhost:3000' // Para desarrollo local
+];
+
+const corsOptions = {
+  // Configuración de origen dinámico o estático
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      // Este error es lo que el navegador vería en la consola si el dominio no está permitido
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+};
 
 // Middlewares
-app.use(cors());
+app.use(cors(corsOptions)); // ⬅️ APLICAMOS LA CONFIGURACIÓN DE CORS
 app.use(express.json());
+
 
 
 // --- MIDDLEWARE DE AUTENTICACIÓN ---
