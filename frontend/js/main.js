@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_URL_REGISTER = `${API_BASE_URL}/usuarios/registrar`;
     const API_URL_POSICIONES = `${API_BASE_URL}/reportes/tabla-posiciones`;
     const API_URL_DASHBOARD_STATS = `${API_BASE_URL}/dashboard/stats`;
-    // URL para futuras acciones de generación de reportes
+    // URL para futuras acciones de generación de reportess
     const API_URL_REPORTES = `${API_BASE_URL}/reportes`; 
     // --- URLs de otras secciones ---
     const API_URL_EQUIPOS = `${API_BASE_URL}/equipos`;
