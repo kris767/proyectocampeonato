@@ -15,6 +15,8 @@ const RENDER_PORT = process.env.PORT || 3000;
 // Es crucial usar una clave secreta fuerte en producción
 const JWT_SECRET = 'tu_secreto_super_secreto_y_largo_que_nadie_debe_saber';
 
+const finalPort = process.env.PORT || 3000;
+
 // ⚡️ CONFIGURACIÓN DE CONEXIÓN A LA BD
 const pool = new Pool({
     // Usa la variable de entorno DATABASE_URL (si existe, la usa Render)
@@ -835,8 +837,7 @@ app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'frontend', 'public', 'login.html'));
 });
 
-
 // Iniciar el servidor
 app.listen(port, () => {
-    console.log(`Servidor escuchando en http://localhost:${port}`);
+    console.log(`Servidor escuchando en http://localhost:${finalport}`);
 });
