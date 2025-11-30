@@ -10,17 +10,23 @@ require('dotenv').config();
 const { stringify } = require('csv-stringify'); 
 
 const app = express();
-// ⚡️ CORRECCIÓN: USAR process.env.PORT ASIGNADO POR EL SERVIDOR (Render lo asigna)
-const RENDER_PORT = process.env.PORT || 3000; 
+
+// ⚡️ CORRECCIÓN FINAL: Definimos el puerto usando el nombre 'PORT' que Express buscará en el entorno
+const PORT = process.env.PORT || 3000; 
+
 // Es crucial usar una clave secreta fuerte en producción
 const JWT_SECRET = 'tu_secreto_super_secreto_y_largo_que_nadie_debe_saber';
 
-const finalPort = process.env.PORT || 3000;
-
-// ⚡️ CONFIGURACIÓN DE CONEXIÓN A LA BD
+// CONFIGURACIÓN DE CONEXIÓN A LA BD (Usando variables separadas que Render inyecta)
 const pool = new Pool({
-    // Usa la variable de entorno DATABASE_URL (si existe, la usa Render)
-    connectionString: process.env.DATABASE_URL, 
+    // Render provee PGUSER, PGPASSWORD, etc. (Si no existen, se usa DATABASE_URL, aunque Render prioriza las separadas)
+    user: process.env.PGUSER,
+    host: process.env.PGHOST,
+    database: process.env.PGDATABASE,
+    password: process.env.PGPASSWORD,
+    port: process.env.PGPORT,
+    
+    // Configuración SSL requerida para conectarse al PostgreSQL de Render
     ssl: {
         rejectUnauthorized: false
     }
@@ -838,6 +844,6 @@ app.get(/.*/, (req, res) => {
 });
 
 // Iniciar el servidor
-app.listen(port, () => {
-    console.log(`Servidor escuchando en http://localhost:${finalport}`);
+app.listen(PORT, () => {
+    console.log(`Servidor escuchando en http://localhost:${PORT}`);
 });
