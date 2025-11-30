@@ -13,16 +13,26 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Es crucial usar una clave secreta fuerte en producción
-const JWT_SECRET = 'tu_secreto_super_secreto_y_largo_que_nadie_debe_saber';
+// Render usará el valor de la variable de entorno JWT_SECRET, si no, usa el valor por defecto.
+const JWT_SECRET = process.env.JWT_SECRET || 'tu_secreto_super_secreto_y_largo_que_nadie_debe_saber'; 
 
 // Configuración de la base de datos
 const pool = new Pool({
+    // ⚡️ CORRECCIÓN CRÍTICA: PRIORIZA DATABASE_URL PARA RENDER
+    connectionString: process.env.DATABASE_URL, 
+    // Configuración SSL requerida para Render, solo se aplica si DATABASE_URL está presente
+    ssl: process.env.DATABASE_URL ? {
+        rejectUnauthorized: false
+    } : false,
+    
+    // Fallback para uso local (si no hay DATABASE_URL, volverá a usar tus variables locales)
     user: process.env.DB_USER || 'krislarico4',
     host: process.env.DB_HOST || 'localhost',
     database: process.env.DB_DATABASE || 'Campeonato_futbol',
     password: process.env.DB_PASSWORD || '13182459',
     port: process.env.DB_PORT || 5432,
 });
+
 
 // Prueba de conexión
 pool.query('SELECT NOW()', (err, res) => {
