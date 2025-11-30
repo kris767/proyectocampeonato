@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ⚡️ PASO CLAVE: REEMPLAZA 'REEMPLAZAR_URL_DE_RENDER' con la URL real de tu Web Service (ej: https://micampeonato-api-xxxx.onrender.com/api)
     // Asegúrate de que termine en /api
-    const API_BASE_URL = 'https://TU_WEB_SERVICE_EXPRESS_RENDER.onrender.com/api'; 
+     const API_BASE_URL = 'https://campeonato-api-t44y.onrender.com/api'; 
     
     // --- API URLs ---
     const API_URL_LOGIN = `${API_BASE_URL}/usuarios/login`;
